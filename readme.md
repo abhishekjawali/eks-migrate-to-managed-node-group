@@ -1,5 +1,5 @@
 @author: Abhsishek Jawali
-# EKS: Upgrading to Managed Node Groups
+# EKS: Migrating to Managed Node Groups with zero downtime
 
 This repository contains the detailed steps for :
 - Migrating from unmanaged node groups to managed node groups
@@ -117,4 +117,17 @@ kubectl scale deployments/coredns --replicas=2 -n kube-system
 ### Delete unmanaged node group
 ```
 eksctl delete nodegroup --approve -f ekscluster-self-managed-ng.yaml
+```
+
+
+# Upgrading the EKS cluster
+The EKS clsuter that we created is running on v1.17. We will see the steps to upgrate this to v1.18
+
+```
+eksctl upgrade cluster --name=ekscluster-demo --approve
+```
+
+# Upgrade the managed node group
+```
+eksctl upgrade nodegroup --name=nodegroup-mng --cluster=ekscluster-demo --kubernetes-version=1.18
 ```
