@@ -4,8 +4,8 @@ kind: ClusterConfig
 
 metadata:
   name: ekscluster-demo
-  region: ap-south-1
-  version: "1.17"
+  region: us-east-1
+  version: "1.18"
 
 
 nodeGroups:
