@@ -26,9 +26,13 @@ When we deploy applications to EKS cluster, the applications pods will be in add
 5.  Drain the unmanaged nodes and remove the unmanaged node groups. 
 6.  Scale-in the deployments to required capacity
 
-We will see the above steps in action. For the purpose of this demo, all resources are created in 'ap-south-1' region. 
+We will see the above steps in action. For the purpose of this demo, all resources are created in 'us-east-1' region. Set the environment variable to use the required region.
+```
+export AWS_REGION=us-east-1
+```
+
 ## Create EKS cluster with unmanaged node groups
-Let us create an EKS cluster running with unmanaged node groups.
+Let us create an EKS cluster running with unmanaged node groups. 
 ```
 eksctl create cluster -f ekscluster-self-managed-ng.yaml
 ```
