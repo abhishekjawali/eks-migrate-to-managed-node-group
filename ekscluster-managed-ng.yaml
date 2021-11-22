@@ -5,12 +5,11 @@ kind: ClusterConfig
 metadata:
   name: ekscluster-demo
   region: us-east-1
-  version: "1.18"
+  version: "1.20"
 
 
 managedNodeGroups:
 - name: nodegroup-mng
   desiredCapacity: 3
   instanceType: t3.small
-  ssh:
-    enableSsm: true
+

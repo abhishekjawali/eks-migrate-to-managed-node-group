@@ -26,10 +26,30 @@ When we deploy applications to EKS cluster, the applications pods will be in add
 5.  Drain the unmanaged nodes and remove the unmanaged node groups. 
 6.  Scale-in the deployments to required capacity
 
-We will see the above steps in action. For the purpose of this demo, all resources are created in 'us-east-1' region. Set the environment variable to use the required region.
+We will see the above steps in action. 
+
+## Pre-requisites
+Here are the list of tools/softwares that have to be installed in the user system. 
+ - [aws-cli v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) - Command line interface to interact with AWS Services. 
+ - [kubectl](https://kubernetes.io/docs/tasks/tools/) - A Kubernetes command line tool, to run commands against Kubernetes clusters. This is used to deploy applications, inspect and manage cluster resources, and view logs.
+ - [eksctl](https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html) - Command line tool that is used for creating and managing EKS clusters.
+ - [helm](https://helm.sh/docs/intro/install/) - Package manager for Kubernetes
+ - [curl](https://curl.se/) - Command line tool for transferring data
+
+ ### Get the code
+ ```
+ git clone https://github.com/abhishekjawali/eks-migrate-to-managed-node-group.git
+ cd eks-migrate-to-managed-node-group
+ ```
+
+ ### Set environment variables
+For the purpose of this demo, all resources are created in 'us-east-1' region. Set the environment variable 'AWS_REGION' to use the required region. Additionally configure the AWS credentials to a profile and set the environment 'AWS_PROFILE' to use the required profile
 ```
+export AWS_PROFILE=development
 export AWS_REGION=us-east-1
 ```
+
+ekscluster-self-managed-ng and ekscluster-managed-ng already have the region set as 'us-east-1'. 
 
 ## Create EKS cluster with unmanaged node groups
 Let us create an EKS cluster running with unmanaged node groups. 
@@ -47,7 +67,7 @@ eksctl utils associate-iam-oidc-provider \
     --cluster ekscluster-demo \
     --approve
 
-wget https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json
+curl -o iam_policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.3.0/docs/install/iam_policy.json
 
 aws iam create-policy \
     --policy-name AWSLoadBalancerControllerIAMPolicy \
@@ -63,8 +83,6 @@ eksctl create iamserviceaccount \
   --override-existing-serviceaccounts \
   --approve
 
-kubectl apply -k 'github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master'
-
 helm repo add eks https://aws.github.io/eks-charts
 
 helm upgrade -i aws-load-balancer-controller \
@@ -78,8 +96,16 @@ helm upgrade -i aws-load-balancer-controller \
 ### Deploy sample application
 ```
 kubectl apply -f 2048-application.yaml
+```
 
-# After deployment is completed, wait for the Application Load Balancer to be active and access the application with the URL. Get the URL that is exported from below command and access this from any web browser: 
+### Verify the deployment and the Ingress resource
+```
+kubectl get deployment,ingress -n game-2048
+```
+
+### Get the Application Load Balancer URL
+After deployment is completed, wait for the Application Load Balancer to be active and access the application with the URL. Get the URL that is exported from below command and access this from any web browser: 
+```
 export APP_URL=$(kubectl get ingress/ingress-2048 -n game-2048 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 ```
 
@@ -107,7 +133,7 @@ kubectl scale deployments/coredns --replicas=4 -n kube-system
 
 ### Drain the unmanaged nodes
 ```
-kubectl drain -l "alpha.eksctl.io/nodegroup-name"="nodegroup" --ignore-daemonsets --delete-local-data
+kubectl drain -l "alpha.eksctl.io/nodegroup-name"="nodegroup" --ignore-daemonsets --delete-emptydir-data
 ```
 
 ### Scale-in the deployments to initial capacity
@@ -125,14 +151,29 @@ eksctl delete nodegroup --approve -f ekscluster-self-managed-ng.yaml
 ```
 
 
-# Upgrading the EKS cluster
-The EKS clsuter that we created is running on v1.18. We will see the steps to upgrate this to v1.19. During the upgrade process, the applications are available and addressing the requests. 
+## Upgrading the EKS cluster
+The EKS cluster that we created is running on v1.20. We will see the steps to upgrate this to v1.21. During the upgrade process, the applications are available and addressing the requests. 
 
 ```
 eksctl upgrade cluster --name=ekscluster-demo --approve
 ```
 
-# Upgrade the managed node group
+## Upgrade the managed node group
 ```
-eksctl upgrade nodegroup --name=nodegroup-mng --cluster=ekscluster-demo --kubernetes-version=1.19
+eksctl upgrade nodegroup --name=nodegroup-mng --cluster=ekscluster-demo --kubernetes-version=1.21
+```
+
+## Cleanup
+```
+kubectl delete -f 2048-application.yaml
+
+eksctl delete iamserviceaccount \
+  --cluster ekscluster-demo \
+  --namespace kube-system \
+  --name aws-load-balancer-controller 
+
+aws iam delete-policy \
+    --policy-arn arn:aws:iam::${ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy
+
+eksctl delete cluster -f ekscluster-managed-ng.yaml
 ```
